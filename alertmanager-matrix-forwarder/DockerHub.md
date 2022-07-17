@@ -14,12 +14,13 @@ Main features:
 - Secret key authentication with Alertmanager.
 - HTML formatted messages.
 - Optionally mentions `@room` on firing alerts
+- Prometheus metrics
 
 ## How to use
 
 ### Docker
 
-The [Docker image](https://hub.docker.com/r/zl0i/alertmanager-matrix-forwarder) `zl0i/matrix-alertmanager:v1.0.0` is the easiest way to get the service running. Ensure you set the required environment variables listed in `.env.default` in this repository.
+The [Docker image](https://hub.docker.com/r/zl0i/alertmanager-matrix-forwarder) `zl0i/matrix-alertmanager:latest` is the easiest way to get the service running. Ensure you set the required environment variables listed in `.env.default` in this repository.
 
 To start the container, use the command
 
@@ -31,7 +32,7 @@ $ docker run --name forwarder \
     -e MATRIX_USER='@alertmanager-matrix-forwarder:matrix.org' \
     -e MATRIX_PASSWORD='password' \
     -e MENTION_ROOM='0' \
-    zl0i/alertmanager-matrix-forwarder:v1.0.0
+    zl0i/alertmanager-matrix-forwarder:latest
 ```
 
 or by modifying the docker-compose.yml file:
@@ -39,7 +40,7 @@ or by modifying the docker-compose.yml file:
 ```yaml
 services:
   forwarder:
-    image: zl0i/alertmanager-matrix-forwarder:v1.0.0
+    image: zl0i/alertmanager-matrix-forwarder:latest
     environment:
       - APP_ALERTMANAGER_SECRET='secret'
       - MATRIX_HOMESERVER_URL='https://matrix.org'
