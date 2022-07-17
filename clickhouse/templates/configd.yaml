@@ -1,0 +1,88 @@
+{{- $root := . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "clickhouse.fullname" . }}-configd
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+data:
+  macros.xml: |-
+    <yandex>
+      <macros>
+        <layer>05</layer>
+        <shard>01</shard>
+        <replica from_env="HOSTNAME" />
+      </macros>
+    </yandex>
+  remote_servers.xml: |-
+    <yandex>
+      <remote_servers incl="clickhouse_remote_servers">
+        <clicks_cluster>
+          <shard>
+            <internal_replication>true</internal_replication>
+            {{range $i, $e := until (atoi (printf "%d" (int64 .Values.replicaCount ))) }}
+            <replica>
+                <default_database>default</default_database>
+                <host>clickhouse-{{$i}}.clickhouse</host>
+                <port>9000</port>
+            </replica>
+            {{end}}
+          </shard>
+        </clicks_cluster>
+      </remote_servers>
+    </yandex>
+  zookeeper.xml: |-
+    <yandex>
+      <zookeeper incl="zookeeper-servers">
+      {{range $i, $zk := until (atoi (printf "%d" (int64 .Values.zookeeper.replicaCount ))) }}
+        <node>
+            <host>{{ $.Release.Name }}-zookeeper-{{$i}}.{{ $.Release.Name }}-zookeeper-headless.{{ $.Release.Namespace }}.svc.cluster.local</host>
+            <port>2181</port>
+        </node>
+      {{end}}
+      {{- if .Values.zookeeper.auth.enabled }}
+      <identity>{{ .Values.zookeeper.auth.clientUser }}:{{ .Values.zookeeper.auth.clientPassword }}</identity>
+      {{- end }}
+      </zookeeper>
+    </yandex>
+
+  users.xml: |-
+    <yandex>
+      <profiles>
+        <default>           
+            <max_memory_usage>10000000000</max_memory_usage>
+            <load_balancing>random</load_balancing>
+        </default>
+        <readonly>
+            <readonly>1</readonly>
+        </readonly>
+      </profiles>
+      <users>
+      {{-  range .Values.users }}
+        <{{ .name }}>
+          <password_sha256_hex>{{ .password | sha256sum }}</password_sha256_hex>
+          <profile>default</profile>
+          <quota>default</quota>
+          <networks>
+            <ip>::/0</ip>
+          </networks>
+        </{{ .name }}>
+      {{- end }}
+      </users>
+      <quotas>
+        <default>
+          <interval>
+            <duration>3600</duration>
+            <queries>0</queries>
+            <errors>0</errors>
+            <result_rows>0</result_rows>
+            <read_rows>0</read_rows>
+            <execution_time>0</execution_time>
+          </interval>
+        </default>
+      </quotas>
+    </yandex>
+  {{- if .Values.initsql }}
+  init.sql: |-
+    {{- .Values.initsql | nindent 4 }}
+  {{- end }}

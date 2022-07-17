@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "grafana-matrix-forwarder.fullname" . }}
+  namespace: monitoring
+  labels:
+    {{- include "grafana-matrix-forwarder.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "grafana-matrix-forwarder.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "grafana-matrix-forwarder.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "grafana-matrix-forwarder.serviceAccountName" . }}
+      {{- with .Values.securityContexts }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContexts }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: GMF_MATRIX_USER
+              value: {{ .Values.matrix.user | quote }}
+            - name: GMF_MATRIX_PASSWORD
+              value: {{ .Values.matrix.password | quote }}
+            - name: GMF_MATRIX_HOMESERVER
+              value: {{ include "grafana-matrix-forwarder.homeserver" . | quote }}
+          ports:
+            - name: http
+              containerPort: 6000
+              protocol: TCP
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- if .Values.pantalaimon.enabled }}
+        - name: pantalaimon
+          {{- with .Values.securityContexts }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.pantalaimon.image.repository }}:{{ .Values.pantalaimon.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.pantalaimon.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}          
+          volumeMounts:
+          - name: {{ include "grafana-matrix-forwarder.fullname" . }}
+            mountPath: /data/pantalaimon.conf
+            subPath: pantalaimon.conf
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.pantalaimon.enabled }}
+      volumes:
+        - name: {{ include "grafana-matrix-forwarder.fullname" . }}
+          configMap:
+            name: {{ include "grafana-matrix-forwarder.fullname" . }}
+      {{- end }}

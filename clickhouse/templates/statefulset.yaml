@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "clickhouse.fullname" . }}
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  serviceName:  {{ include "clickhouse.fullname" . }}
+  selector:
+    matchLabels:
+      {{- include "clickhouse.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "clickhouse.labels" . | nindent 8 }}   
+      annotations:
+        pod.alpha.kubernetes.io/initialized: "true"    
+        checksum/config: {{ include (print $.Template.BasePath "/configd.yaml") . | sha256sum }}   
+    spec:
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: {{include "clickhouse.fullname" . }}-configd
+          configMap:
+            name: {{include "clickhouse.fullname" . }}-configd
+      containers:
+        - name: clickhouse-server
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          terminationMessagePath: "/var/log/clickhouse-server/clickhouse-server.err.log"
+          ports:
+          - name: rpc
+            containerPort: 9000
+            protocol: TCP
+          - name: rest
+            containerPort: 8123
+            protocol: TCP
+          - name: interserver
+            containerPort: 9009
+            protocol: TCP
+          volumeMounts:
+          - name: {{ include "clickhouse.fullname" . }}-data
+            mountPath: {{ .Values.persistence.mountPath }}
+          {{- if .Values.initsql }}
+          - name: {{include "clickhouse.fullname" . }}-configd
+            mountPath: /docker-entrypoint-initdb.d/init.sql
+            subPath: init.sql
+          {{- end }}
+          - name: {{include "clickhouse.fullname" . }}-configd
+            mountPath: /etc/clickhouse-server/config.d/remote_servers.xml
+            subPath: remote_servers.xml
+          - name: {{include "clickhouse.fullname" . }}-configd
+            mountPath: /etc/clickhouse-server/config.d/zookeeper.xml
+            subPath: zookeeper.xml
+          - name: {{include "clickhouse.fullname" . }}-configd
+            mountPath: /etc/clickhouse-server/config.d/graphite.xml
+            subPath: graphite.xml
+          - name: {{include "clickhouse.fullname" . }}-configd
+            mountPath: /etc/clickhouse-server/config.d/macros.xml
+            subPath: macros.xml
+          - name: {{include "clickhouse.fullname" . }}-configd
+            mountPath: /etc/clickhouse-server/users.d
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}    
+        {{- if .Values.metrics.enabled }}
+        - name: metrics
+          image: {{ .Values.metrics.image.registry }}/{{.Values.metrics.image.repository}}:{{ .Values.metrics.image.tag }}
+          imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+          ports:
+          - name: metrics
+            containerPort: 9116
+            protocol: TCP          
+          args: ["-scrape_uri=http://localhost:8123/"]
+          {{- with .Values.metrics.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}      
+          env:
+            - name: CLICKHOUSE_USER
+              value: {{ get (.Values.users | first) "name"}}
+            - name: CLICKHOUSE_PASSWORD
+              value: {{ get (.Values.users | first) "password"}}
+        {{- end }}      
+  volumeClaimTemplates:
+  - metadata:
+      name: {{ include "clickhouse.fullname" . }}-data
+    spec:
+      accessModes:
+      {{- range .Values.persistence.accessModes }}
+        - {{ . | quote }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.persistence.size }}

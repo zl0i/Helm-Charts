@@ -1,0 +1,101 @@
+# Default values for alertmanager-matrix-forwarder.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: docker.io/zl0i/alertmanager-matrix-forwarder
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: 'v1.0.0'
+
+imagePullSecrets: []
+nameOverride: ''
+fullnameOverride: ''
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ''
+
+podAnnotations:
+  {}
+  # prometheus.io/scrape: "true"
+  # prometheus.io/port: "3000"
+
+podSecurityContext:
+  {}
+  # fsGroup: 2000
+
+securityContext:
+  {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: false
+  className: ''
+  annotations:
+    {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources:
+  {}
+  # limits:
+  #   cpu: 10m
+  #   memory: 50Mi
+  # requests:
+  #   cpu: 10m
+  #   memory: 50Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+key: ''
+matrix:
+  user: '@alertmanager-matrix-forwarder:matrix.org'
+  password: 'password'
+  homeserver: https://matrix.org
+  roomID: matrix/!XRMnKmXLQJqjnKCGzU:matrix.org
+
+#end-to-end encryption aware Matrix reverse proxy daemon
+pantalaimon:
+  enabled: true
+  image:
+    repository: matrixdotorg/pantalaimon
+    pullPolicy: IfNotPresent
+    tag: 'v0.10.4'
+  listenPort: '8008'
+  resources:
+    limits:
+      cpu: 50m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 56Mi

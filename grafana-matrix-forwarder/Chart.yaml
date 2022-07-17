@@ -1,0 +1,7 @@
+apiVersion: v2
+name: grafana-matrix-forwarder
+description: Webserver to forward Grafana alerts to a Matrix chat room.
+type: application
+version: 1.0.0
+appVersion: "0.6.0"
+icon: https://grafana.com/static/img/menu/grafana2.svg

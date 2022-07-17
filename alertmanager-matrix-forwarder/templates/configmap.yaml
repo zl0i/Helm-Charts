@@ -1,0 +1,21 @@
+{{- if .Values.pantalaimon.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "forwarder.fullname" . }}
+  labels:
+    {{- include "forwarder.labels" . | nindent 4 }}
+data:
+  pantalaimon.conf: |-
+    [Default]
+    LogLevel = Debug
+    SSL = True
+
+    [local-matrix]
+    Homeserver = {{ .Values.matrix.homeserver }}
+    ListenAddress = 0.0.0.0
+    ListenPort = {{ .Values.pantalaimon.listenPort }}
+    SSL = True
+    UseKeyring = False
+    IgnoreVerification = True
+{{- end }}

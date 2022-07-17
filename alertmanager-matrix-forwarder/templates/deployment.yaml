@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "forwarder.fullname" . }}
+  namespace: monitoring
+  labels:
+    {{- include "forwarder.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "forwarder.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:      
+      annotations:
+        checksum/secret-env: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}        
+      labels:
+        {{- include "forwarder.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "forwarder.serviceAccountName" . }}
+      {{- with .Values.securityContexts }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContexts }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+          - secretRef:
+              name: {{ include "forwarder.fullname" . }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- if .Values.pantalaimon.enabled }}
+        - name: pantalaimon
+          {{- with .Values.securityContexts }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.pantalaimon.image.repository }}:{{ .Values.pantalaimon.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.pantalaimon.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}          
+          volumeMounts:
+          - name: {{ include "forwarder.fullname" . }}
+            mountPath: /data/pantalaimon.conf
+            subPath: pantalaimon.conf
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.pantalaimon.enabled }}
+      volumes:
+        - name: {{ include "forwarder.fullname" . }}
+          configMap:
+            name: {{ include "forwarder.fullname" . }}
+      {{- end }}

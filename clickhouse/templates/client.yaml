@@ -1,0 +1,40 @@
+{{ if .Values.client.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "clickhouse.fullname" . }}-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "clickhouse.selectorLabels" . | nindent 6 }}-client
+  template:
+    metadata:
+      labels:
+        {{- include "clickhouse.selectorLabels" . | nindent 8 }}-client
+    spec:
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: clickhouse-client
+          image: yandex/clickhouse-client:21.3
+          command: ["sleep"]
+          args: ["infinity"]
+          resources:
+            limits:
+              cpu: 25m
+              memory: 64Mi
+            requests:
+              cpu: 25m
+              memory: 64Mi
+{{ end }}
