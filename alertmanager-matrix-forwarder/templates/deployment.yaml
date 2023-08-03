@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "forwarder.fullname" . }}
-  namespace: monitoring
   labels:
     {{- include "forwarder.labels" . | nindent 4 }}
 spec:

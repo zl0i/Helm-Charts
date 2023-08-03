@@ -3,5 +3,5 @@ name: alertmanager-matrix-forwarder
 description: A bot to receive Prometheus Alertmanager webhook events and forward them to chosen rooms.
 icon: https://prometheus.io/assets/favicons/favicon.ico
 type: application
-version: 1.0.0
+version: 1.0.1
 appVersion: "1.0.0"
